@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
+import $ from "jquery";
 import Navigation from "../components/Navigation";
-import { Container, Row, Col, Form, Card, Button } from "react-bootstrap";
+import Loader from "../components/Loader";
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Card,
+  Button,
+  Image,
+} from "react-bootstrap";
+import { useFileUpload } from "use-file-upload";
 
 const RegisterScreen = () => {
   const [firstName, setFirstName] = useState();
@@ -15,6 +27,12 @@ const RegisterScreen = () => {
   const [confirmPassMess, setConfirmPassMess] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("text-danger");
   const [nextButton, setNextButton] = useState(true);
+  const [image, setImage] = useState(
+    "http://simpleicon.com/wp-content/uploads/user1.png"
+  );
+  const [file, selectFile] = useFileUpload();
+  const [uploadedImage, setUploadedImage] = useState(false);
+  const [fileUploadMessage, setFileUploadMessage] = useState(null);
   const validatePassword = (pass) => {
     console.log(pass);
     if (!/^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{6,16}$/.test(pass)) {
@@ -28,7 +46,10 @@ const RegisterScreen = () => {
     setAlarm("text-success");
     return;
   };
+  const [showUpload, setShowUpload] = useState(false);
+  const [loadingImage, setLoadingImage] = useState(false);
   const [alarm, setAlarm] = useState("text-info");
+  const [name, setName] = useState("");
   const handleShowPassword = () => {
     if (passwordType === "password") {
       setPasswordType("text");
@@ -70,10 +91,58 @@ const RegisterScreen = () => {
     e.preventDefault();
     console.log(firstName, lastName, email, password);
   };
+  const handleImageUpload = (e) => {
+    selectFile({ accept: "image/*" }, ({ source, name, size, file }) => {
+      // Validating file type
+      let fileName = name.split(".");
+      let fileType = fileName[fileName.length - 1];
+      if (!file.type.includes("image")) {
+        setFileUploadMessage("Wrong file type, you uploaded: " + fileType);
+        setUploadedImage(false);
+      } else {
+        setFileUploadMessage(null);
+        setUploadedImage(true);
+      }
+      setName(name);
+    });
+  };
+  const handleCreateAccount = async () => {
+    // Upload image first to get image link
+    setLoadingImage(true);
+    let formData = new FormData();
+    formData.append("file", file.file);
+    let { data } = await axios.post(
+      "http://localhost:8080/api/users/file",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    setImage(data);
+    let user = {
+      firstName,
+      lastName,
+      email,
+      password,
+      image,
+    };
+    console.log(user);
+    try {
+      let response = await axios.post("/api/users/register", {
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        image: image,
+      });
+      console.log(response);
+    } catch (error) {
+      setLoadingImage(false);
+      console.log(error);
+    }
+  };
   return (
     <div>
       <Navigation />
-      <Container>
+      <Container style={{ display: showUpload && "none" }}>
         <Card>
           <Card.Header>Create an account</Card.Header>
           <Card.Body>
@@ -109,7 +178,7 @@ const RegisterScreen = () => {
                 </Col>
               </Row>
               <Row>
-                <Col>
+                <Col md={8} sm={12} lg={8}>
                   <Form.Group>
                     <Form.Label>Email</Form.Label>
                     <Form.Control
@@ -125,7 +194,7 @@ const RegisterScreen = () => {
                 </Col>
               </Row>
               <Row>
-                <Col>
+                <Col md={8} sm={12} lg={8}>
                   <Form.Group>
                     <Form.Label>Password</Form.Label>
                     <Form.Control
@@ -142,7 +211,7 @@ const RegisterScreen = () => {
                 </Col>
               </Row>
               <Row>
-                <Col>
+                <Col md={8} sm={12} lg={8}>
                   <Form.Group>
                     <Form.Check
                       type="checkbox"
@@ -153,7 +222,7 @@ const RegisterScreen = () => {
                 </Col>
               </Row>
               <Row className="my-3">
-                <Col>
+                <Col md={8} sm={12} lg={8}>
                   <Form.Group>
                     <Form.Label>Confirm Password</Form.Label>
                     <Form.Control
@@ -173,13 +242,72 @@ const RegisterScreen = () => {
                     disabled={nextButton}
                     type="submit"
                     variant="primary"
-                    className="m-3 ml-auto"
+                    className="m-3 ml-auto float-end"
+                    onClick={() => setShowUpload(!showUpload)}
                   >
                     Next
                   </Button>
                 </Col>
               </Row>
             </Form>
+          </Card.Body>
+        </Card>
+      </Container>
+      <Container style={{ display: !showUpload && "none" }}>
+        <Card>
+          <Card.Header>Upload a profile photo</Card.Header>
+          <Card.Body>
+            <Row style={{ minHeight: "350px" }}>
+              <Col>
+                <Image src={file?.source || image} fluid thumbnail />
+              </Col>
+              <Col>
+                <Card.Text>
+                  The picture must be one of the following types only:
+                </Card.Text>
+                <Card.Text>jiff, jpg, png, jpeg</Card.Text>
+                <Button
+                  disabled={loadingImage}
+                  type="button"
+                  onClick={handleImageUpload}
+                >
+                  Upload Picture
+                </Button>
+                <br />
+                <small className="text-danger">
+                  {fileUploadMessage &&
+                    fileUploadMessage +
+                      ". Please upload an image file to continue."}
+                </small>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Button
+                  disabled={loadingImage}
+                  type="button m-3 float-start"
+                  className="m-3"
+                  onClick={() => setShowUpload(!showUpload)}
+                >
+                  Previous
+                </Button>
+              </Col>
+              <Col>
+                {loadingImage ? (
+                  <Loader className="float-end" />
+                ) : (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="m-3 float-end"
+                    disabled={!uploadedImage}
+                    onClick={handleCreateAccount}
+                  >
+                    Create account
+                  </Button>
+                )}
+              </Col>
+            </Row>
           </Card.Body>
         </Card>
       </Container>
