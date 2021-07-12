@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import $ from "jquery";
 import Navigation from "../components/Navigation";
 import Loader from "../components/Loader";
 import { useSelector, useDispatch } from "react-redux";
-import { LOGIN, SET_TOKEN } from "../constants/constants";
+import { SET_TOKEN } from "../constants/constants";
 
 import {
   Container,
@@ -267,6 +266,9 @@ const RegisterScreen = ({ history }) => {
               </Row>
             </Form>
           </Card.Body>
+          <Card.Footer>
+            Already registered? <a href="/">Log in here</a>
+          </Card.Footer>
         </Card>
       </Container>
       <Container style={{ display: !showUpload && "none" }}>
