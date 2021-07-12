@@ -3,6 +3,9 @@ import axios from "axios";
 import $ from "jquery";
 import Navigation from "../components/Navigation";
 import Loader from "../components/Loader";
+import { useSelector, useDispatch } from "react-redux";
+import { LOGIN, SET_TOKEN } from "../constants/constants";
+
 import {
   Container,
   Row,
@@ -14,7 +17,8 @@ import {
 } from "react-bootstrap";
 import { useFileUpload } from "use-file-upload";
 
-const RegisterScreen = () => {
+const RegisterScreen = ({ history }) => {
+  const dispatch = useDispatch();
   const [firstName, setFirstName] = useState();
   const [lastName, setLastName] = useState();
   const [email, setEmail] = useState();
@@ -27,9 +31,7 @@ const RegisterScreen = () => {
   const [confirmPassMess, setConfirmPassMess] = useState("");
   const [confirmMessage, setConfirmMessage] = useState("text-danger");
   const [nextButton, setNextButton] = useState(true);
-  const [image, setImage] = useState(
-    "http://simpleicon.com/wp-content/uploads/user1.png"
-  );
+  const [image, setImage] = useState("");
   const [file, selectFile] = useFileUpload();
   const [uploadedImage, setUploadedImage] = useState(false);
   const [fileUploadMessage, setFileUploadMessage] = useState(null);
@@ -63,7 +65,14 @@ const RegisterScreen = () => {
     setPassword(e.target.value);
     return validatePassword(e.target.value);
   };
+  const { token } = useSelector((state) => state);
   useEffect(() => {
+    console.log(history);
+    // Check if user is logged in already
+    if (token !== "") {
+      window.location.href = "/profile";
+    }
+    // Check all fields are filled
     if (
       firstName === null ||
       lastName === null ||
@@ -111,12 +120,16 @@ const RegisterScreen = () => {
     setLoadingImage(true);
     let formData = new FormData();
     formData.append("file", file.file);
-    let { data } = await axios.post(
-      "http://localhost:8080/api/users/file",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-    setImage(data);
+    try {
+      let { data } = await axios.post(
+        "http://localhost:8080/api/users/file",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      setImage(data);
+    } catch (error) {
+      setImage("default-image.png");
+    }
     let user = {
       firstName,
       lastName,
@@ -126,14 +139,17 @@ const RegisterScreen = () => {
     };
     console.log(user);
     try {
-      let response = await axios.post("/api/users/register", {
+      let { data } = await axios.post("/api/users/register", {
         firstName: firstName,
         lastName: lastName,
         email: email,
         password: password,
         image: image,
       });
-      console.log(response);
+      let { token } = data;
+      dispatch({ type: SET_TOKEN, payload: token });
+      localStorage.setItem("token", token);
+      history.push("/profile");
     } catch (error) {
       setLoadingImage(false);
       console.log(error);
@@ -141,7 +157,7 @@ const RegisterScreen = () => {
   };
   return (
     <div>
-      <Navigation />
+      <Navigation history={history} />
       <Container style={{ display: showUpload && "none" }}>
         <Card>
           <Card.Header>Create an account</Card.Header>
@@ -259,7 +275,11 @@ const RegisterScreen = () => {
           <Card.Body>
             <Row style={{ minHeight: "350px" }}>
               <Col>
-                <Image src={file?.source || image} fluid thumbnail />
+                <Image
+                  src={file && file.source ? file.source : image}
+                  fluid
+                  thumbnail
+                />
               </Col>
               <Col>
                 <Card.Text>
@@ -309,6 +329,9 @@ const RegisterScreen = () => {
               </Col>
             </Row>
           </Card.Body>
+          <Card.Footer>
+            Already registered? <a href="/">Log in here</a>
+          </Card.Footer>
         </Card>
       </Container>
     </div>
