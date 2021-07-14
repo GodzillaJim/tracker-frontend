@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import Navigation from "../components/Navigation";
 import Loader from "../components/Loader";
 import { useSelector, useDispatch } from "react-redux";
-import { SET_TOKEN } from "../constants/constants";
+import { Link } from "react-router-dom";
 
 import {
   Container,
@@ -15,6 +14,7 @@ import {
   Image,
 } from "react-bootstrap";
 import { useFileUpload } from "use-file-upload";
+import { registerAction, uploadImageAction } from "../actions/actions";
 
 const RegisterScreen = ({ history }) => {
   const dispatch = useDispatch();
@@ -48,9 +48,15 @@ const RegisterScreen = ({ history }) => {
     return;
   };
   const [showUpload, setShowUpload] = useState(false);
-  const [loadingImage, setLoadingImage] = useState(false);
   const [alarm, setAlarm] = useState("text-info");
   const [name, setName] = useState("");
+  const [enableUpload, setEnableUpload] = useState(false);
+  const {
+    image: loadedImage,
+    loading: loadingImage,
+    error: errorImage,
+    success,
+  } = useSelector((state) => state.uploadImage);
   const handleShowPassword = () => {
     if (passwordType === "password") {
       setPasswordType("text");
@@ -64,12 +70,16 @@ const RegisterScreen = ({ history }) => {
     setPassword(e.target.value);
     return validatePassword(e.target.value);
   };
-  const { token } = useSelector((state) => state);
+  const {
+    token,
+    loading: tokenLoading,
+    error: errorToken,
+  } = useSelector((state) => state.setToken);
   useEffect(() => {
-    console.log(history);
     // Check if user is logged in already
-    if (token !== "") {
-      window.location.href = "/profile";
+    if (token) {
+      history.push("/profile");
+      return;
     }
     // Check all fields are filled
     if (
@@ -83,7 +93,7 @@ const RegisterScreen = ({ history }) => {
     } else {
       setNextButton(false);
     }
-  }, [firstName, lastName, email, password, confirmPassword]);
+  }, [firstName, lastName, email, password, confirmPassword, token]);
   const handleConfirmPassword = (e) => {
     setConfirmPassword(e.target.value);
     if (e.target.value !== password) {
@@ -106,58 +116,40 @@ const RegisterScreen = ({ history }) => {
       let fileType = fileName[fileName.length - 1];
       if (!file.type.includes("image")) {
         setFileUploadMessage("Wrong file type, you uploaded: " + fileType);
-        setUploadedImage(false);
+        setEnableUpload(false);
       } else {
         setFileUploadMessage(null);
-        setUploadedImage(true);
+        setEnableUpload(true);
       }
       setName(name);
     });
   };
   const handleCreateAccount = async () => {
     // Upload image first to get image link
-    setLoadingImage(true);
-    let formData = new FormData();
-    formData.append("file", file.file);
-    try {
-      let { data } = await axios.post(
-        "http://localhost:8080/api/users/file",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setImage(data);
-    } catch (error) {
-      setImage("default-image.png");
-    }
     let user = {
       firstName,
       lastName,
       email,
       password,
-      image,
+      image: loadedImage,
     };
-    console.log(user);
-    try {
-      let { data } = await axios.post("/api/users/register", {
-        firstName: firstName,
-        lastName: lastName,
-        email: email,
-        password: password,
-        image: image,
-      });
-      let { token } = data;
-      dispatch({ type: SET_TOKEN, payload: token });
-      localStorage.setItem("token", token);
-      history.push("/profile");
-    } catch (error) {
-      setLoadingImage(false);
-      console.log(error);
+
+    dispatch(registerAction(user));
+  };
+  const sendImage = () => {
+    let formData = new FormData();
+    formData.append("file", file.file);
+    dispatch(uploadImageAction(formData));
+    if (success) {
+      setUploadedImage(false);
+    } else {
+      setUploadedImage(true);
     }
   };
   return (
     <div>
       <Navigation history={history} />
-      <Container style={{ display: showUpload && "none" }}>
+      <Container className="my-3" style={{ display: showUpload && "none" }}>
         <Card>
           <Card.Header>Create an account</Card.Header>
           <Card.Body>
@@ -267,7 +259,10 @@ const RegisterScreen = ({ history }) => {
             </Form>
           </Card.Body>
           <Card.Footer>
-            Already registered? <a href="/">Log in here</a>
+            Already registered?{" "}
+            <Button variant="link" className="link" to="/" as={Link}>
+              Log in here
+            </Button>
           </Card.Footer>
         </Card>
       </Container>
@@ -292,8 +287,17 @@ const RegisterScreen = ({ history }) => {
                   disabled={loadingImage}
                   type="button"
                   onClick={handleImageUpload}
+                  className="m-2"
                 >
-                  Upload Picture
+                  Select Picture
+                </Button>
+                <Button
+                  onClick={sendImage}
+                  disabled={!enableUpload}
+                  type="button"
+                  className="m-2"
+                >
+                  Upload
                 </Button>
                 <br />
                 <small className="text-danger">
@@ -301,6 +305,30 @@ const RegisterScreen = ({ history }) => {
                     fileUploadMessage +
                       ". Please upload an image file to continue."}
                 </small>
+                {errorImage && (
+                  <Card.Text className="text-danger">
+                    Something went wrong. Please try again.
+                  </Card.Text>
+                )}
+                {success && (
+                  <Card.Text className="text-success">
+                    Picture upload successful
+                  </Card.Text>
+                )}
+                {token && (
+                  <Card.Text className="text-success">
+                    Account creation successful. You are being redirected to the
+                    profile page.
+                  </Card.Text>
+                )}
+                {errorToken && (
+                  <Card.Text className="text-danger">
+                    That email already exists.
+                    <Button variant="link" className="link" as={Link} to="/">
+                      Login here instead.
+                    </Button>
+                  </Card.Text>
+                )}
               </Col>
             </Row>
             <Row>
@@ -332,7 +360,10 @@ const RegisterScreen = ({ history }) => {
             </Row>
           </Card.Body>
           <Card.Footer>
-            Already registered? <a href="/">Log in here</a>
+            Already registered?
+            <Button variant="link" className="link" as={Link} to="/">
+              Log in
+            </Button>
           </Card.Footer>
         </Card>
       </Container>

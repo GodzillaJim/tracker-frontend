@@ -3,7 +3,7 @@ import { Spinner } from "react-bootstrap";
 
 const Loader = ({ className }) => {
   return (
-    <div className={className ? className + " m-2 btn" : "m-2"}>
+    <div className={className ? className + " m-2" : "m-2"}>
       <Spinner animation="border" className="text-bolder" />
     </div>
   );

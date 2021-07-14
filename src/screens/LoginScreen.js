@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { Container, Card, Row, Col, Form, Button } from "react-bootstrap";
-import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
-import { SET_TOKEN } from "../constants/constants";
+import { loginAction } from "../actions/actions";
+import { Link } from "react-router-dom";
+import Loader from "../components/Loader";
 
 const LoginScreen = ({ history }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state) => state);
+  const { token, error, loading } = useSelector((state) => state.setToken);
   useEffect(() => {
-    if (token.length > 1) {
-      return history.push("/profile");
+    if (token) {
+      history.push("/profile");
     }
   }, [token]);
   const [showPass, setShowPass] = useState(false);
@@ -17,19 +18,19 @@ const LoginScreen = ({ history }) => {
   const [email, setEmail] = useState();
   const handleLogin = (e) => {
     e.preventDefault();
-    axios.post("/api/users/login", { email, password }).then((response) => {
-      let { data } = response;
-      let { token } = data;
-      dispatch({ type: SET_TOKEN, payload: token });
-      history.push("/profile");
-    });
+    dispatch(loginAction({ email, password }));
   };
   return (
     <Container>
       <Row>
         <Col md={8} sm={12} lg={8} className="mx-auto">
-          <Card style={{ top: "50%" }}>
+          <Card style={{ top: "25%" }}>
             <Card.Header>Log in</Card.Header>
+            {error && (
+              <Card.Text className="text-center text-danger">
+                Email or password is wrong.
+              </Card.Text>
+            )}
             <Card.Body>
               <Row>
                 <Col>
@@ -62,16 +63,24 @@ const LoginScreen = ({ history }) => {
                       />
                     </Form.Group>
                     <Form.Group>
-                      <Button type="submit" className="float-end m-3">
-                        Login
-                      </Button>
+                      {loading ? (
+                        <Loader className="float-end m-3" />
+                      ) : (
+                        <Button type="submit" className="float-end m-3">
+                          Login
+                        </Button>
+                      )}
                     </Form.Group>
                   </Form>
                 </Col>
               </Row>
             </Card.Body>
             <Card.Footer>
-              New? Create account <a href="/register">here</a>.
+              New? Create account{" "}
+              <Button as={Link} className="link" variant="link" to="/register">
+                here
+              </Button>
+              .
             </Card.Footer>
           </Card>
         </Col>

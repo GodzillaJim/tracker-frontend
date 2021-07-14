@@ -5,60 +5,32 @@ import { LOGIN } from "../constants/constants";
 import { Container, Row, Col, Card, Image, Form } from "react-bootstrap";
 import Navigation from "../components/Navigation";
 import Loader from "../components/Loader";
+import { getProfileAction } from "../actions/actions";
 
 const ProfileScreen = ({ history }) => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state) => state);
-  const { user: userData } = useSelector((state) => state);
-  const { user } = userData;
+  const { token } = useSelector((state) => state.setToken);
+  const { user, loading, error } = useSelector((state) => state.getProfile);
   const [loadingData, setLoadingData] = useState(true);
-  const [error, setError] = useState(null);
-  const [userLoaded, setUserLoaded] = useState(false);
 
   useEffect(async () => {
-    if (token == "") {
+    if (!token) {
       history.push("/");
       return;
     }
-    if (!userLoaded) {
-      try {
-        var settings = {
-          url: "http://localhost:8080/api/users/profile",
-          method: "GET",
-          timeout: 0,
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-        };
-
-        $.ajax(settings)
-          .done(function (response) {
-            dispatch({ type: LOGIN, payload: response.data });
-            console.log(response);
-          })
-          .fail((error) => {
-            setLoadingData(false);
-            setError(error);
-          });
-      } catch (error) {
-        setUserLoaded(false);
-        setLoadingData(false);
-        setError(error);
-      }
+    if (!loading && !user) {
+      dispatch(getProfileAction(token));
     }
-    if (user && user.email) {
-      setUserLoaded(true);
-    }
-  }, [user]);
+  }, [token]);
   return (
     <div>
       <Navigation history={history} />
-      <Container>
+      <Container className="my-3">
         <Row>
           <Col md={8} sm={12} lg={8} className="mx-auto">
             {error ? (
               <Card>{JSON.stringify(error)}</Card>
-            ) : loadingData ? (
+            ) : loading ? (
               <Loader />
             ) : (
               <Card>
@@ -67,7 +39,7 @@ const ProfileScreen = ({ history }) => {
                   <Row>
                     <Col>
                       <Image
-                        src={user ? user.image : "/default-image.png"}
+                        src={user ? "/" + user.image : "/default-image.png"}
                         thumbnail
                       />
                     </Col>

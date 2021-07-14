@@ -1,16 +1,26 @@
 import { createStore, combineReducers, applyMiddleware } from "redux";
 import thunk from "redux-thunk";
 import { composeWithDevTools } from "redux-devtools-extension";
-import { tokenReducer, userReducer } from "./reducer/reducers";
+import {
+  uploadImageReducer,
+  setTokenReducer,
+  getProfileReducer,
+} from "./reducer/reducers";
 
 const reducer = combineReducers({
-  user: userReducer,
-  token: tokenReducer,
+  uploadImage: uploadImageReducer,
+  setToken: setTokenReducer,
+  getProfile: getProfileReducer,
 });
 
 const initialState = {
-  token: localStorage.getItem("token") ? localStorage.getItem("token") : "",
-  user: localStorage.getItem("user") ? localStorage.getItem("user") : {},
+  uploadImage: localStorage.getItem("image")
+    ? localStorage.getItem("image")
+    : "default-image.png",
+  setToken: localStorage.getItem("token") ? localStorage.getItem("token") : "",
+  getProfile: localStorage.getItem("profile")
+    ? localStorage.getItem("profile")
+    : { user: null },
 };
 
 const middleWare = [thunk];
